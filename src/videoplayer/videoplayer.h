@@ -7,71 +7,49 @@
 #ifndef VIDEOPLAYER_H
 #define VIDEOPLAYER_H
 
-#include <QThread>
+#include <QWidget>
+#include <customtitle.h>
+
 #include <QImage>
+#include <QPaintEvent>
+#include <QTimer>
+#include <QPushButton>
 
-extern "C"
-{
-    #include "libavcodec/avcodec.h"
-    #include "libavformat/avformat.h"
-    #include <libavutil/time.h>
-    #include "libavutil/pixfmt.h"
-    #include "libswscale/swscale.h"
-    #include "libswresample/swresample.h"
+#include "videoplayer/videoplayer_thread.h"
 
-
-    #include <SDL.h>
-    #include <SDL_audio.h>
-    #include <SDL_types.h>
-    #include <SDL_name.h>
-    #include <SDL_main.h>
-    #include <SDL_config.h>
+namespace Ui {
+class VideoPlayer;
 }
 
-typedef struct PacketQueue {
-    AVPacketList *first_pkt, *last_pkt;
-    int nb_packets;
-    int size;
-    SDL_mutex *mutex;
-    SDL_cond *cond;
-} PacketQueue;
+///这个是播放器的主界面 包括那些按钮和进度条之类的
 
-#define VIDEO_PICTURE_QUEUE_SIZE 1
-#define AVCODEC_MAX_AUDIO_FRAME_SIZE 192000 // 1 second of 48khz 32bit audio
-
-typedef struct VideoState {
-    AVCodecContext *aCodecCtx; //音频解码器
-    AVFrame *audioFrame;// 解码音频过程中的使用缓存
-    PacketQueue *audioq;
-
-    double video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
-
-    AVStream *video_st;
-
-} VideoState;
-
-class VideoPlayer : public QThread
+class VideoPlayer : public CustomTitle
 {
     Q_OBJECT
 
 public:
-    explicit VideoPlayer();
+    explicit VideoPlayer(QWidget *parent = 0);
     ~VideoPlayer();
 
-    void setFileName(QString path){mFileName = path;}
-
-    void startPlay();
-
-signals:
-    void sig_GetOneFrame(QImage); //每获取到一帧图像 就发送此信号
-
 protected:
-    void run();
+    void doClose();
+//    void mousePressEvent(QMouseEvent *e);
+//    void mouseDoubleClickEvent(QMouseEvent *);
 
 private:
-    QString mFileName;
+    Ui::VideoPlayer *ui;
 
-    VideoState mVideoState; //用来 传递给 SDL音频回调函数的数据
+    VideoPlayer_Thread *mPlayer; //播放线程
+    QTimer *mTimer; //定时器-获取当前视频时间
+
+private slots:
+    ///播放器相关的槽函数
+    void slotTotalTimeChanged(qint64 uSec);
+    void slotSliderMoved(int value);
+    void slotTimerTimeOut();
+    void slotBtnClick();
+
+    void slotStateChanged(VideoPlayer_Thread::PlayerState state);
 
 };
 
